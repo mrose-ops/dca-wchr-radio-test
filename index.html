@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#581c87">
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>DCA WCHR Radio</title>
+  <style>
+    body{margin:0;background:#0f172a;color:#fff;font-family:Arial,sans-serif}
+    .app{max-width:520px;margin:0 auto;padding:14px}
+    .head{background:#581c87;border-radius:14px;padding:14px;margin-bottom:12px}
+    .head h1{margin:0 0 5px;font-size:22px}
+    .card{background:#1e293b;border-radius:12px;padding:12px;margin-bottom:12px}
+    .online{color:#86efac}.small{opacity:.72;font-size:12px}
+    label{display:block;font-weight:800;margin:8px 0 4px}
+    input,select{width:100%;box-sizing:border-box;padding:10px;border:0;border-radius:8px}
+    .primary{width:100%;padding:12px;margin-top:10px;border:0;border-radius:8px;background:#22c55e;color:#052e16;font-weight:900}
+    .danger{width:100%;padding:10px;border:0;border-radius:8px;background:#7f1d1d;color:#fff;font-weight:900}
+    .ptt{width:100%;height:130px;border:0;border-radius:18px;background:#7e22ce;color:#fff;font-size:24px;font-weight:900;touch-action:none}
+    .ptt.tx{background:#b91c1c}
+    .hidden{display:none}
+    iframe{position:fixed;width:1px;height:1px;left:-10px;top:-10px;border:0;opacity:.01;pointer-events:none}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="head">
+    <h1>🎙 DCA WCHR RADIO</h1>
+    <div id="deviceLine">Device not enrolled</div>
+    <div id="shiftLine" class="small">No employee signed in</div>
+  </div>
+
+  <div id="enrollCard" class="card">
+    <b>ONE-TIME DEVICE ENROLLMENT</b>
+    <label>Phone Device ID</label>
+    <select id="deviceSelect">
+      <option value="WCHR-01">WCHR-01</option><option value="WCHR-02">WCHR-02</option><option value="WCHR-03">WCHR-03</option><option value="WCHR-04">WCHR-04</option><option value="WCHR-05">WCHR-05</option><option value="WCHR-06">WCHR-06</option><option value="WCHR-07">WCHR-07</option><option value="WCHR-08">WCHR-08</option><option value="WCHR-09">WCHR-09</option><option value="WCHR-10">WCHR-10</option><option value="WCHR-11">WCHR-11</option><option value="WCHR-12">WCHR-12</option><option value="WCHR-13">WCHR-13</option><option value="WCHR-14">WCHR-14</option><option value="WCHR-15">WCHR-15</option><option value="WCHR-16">WCHR-16</option><option value="WCHR-17">WCHR-17</option><option value="WCHR-18">WCHR-18</option><option value="WCHR-19">WCHR-19</option><option value="WCHR-20">WCHR-20</option><option value="WCHR-21">WCHR-21</option><option value="WCHR-22">WCHR-22</option><option value="WCHR-23">WCHR-23</option><option value="WCHR-24">WCHR-24</option><option value="WCHR-25">WCHR-25</option>
+    </select>
+    <button id="saveDevice" class="primary">SAVE DEVICE</button>
+    <div class="small">The phone remembers this Device ID. The employee name is not permanently saved.</div>
+  </div>
+
+  <div id="signinCard" class="card hidden">
+    <b>START SHIFT</b>
+    <label>Employee name</label>
+    <input id="employeeName" placeholder="Enter your name">
+    <label>Role</label>
+    <select id="employeeRole">
+      <option value="AGENT">WCHR Agent</option>
+      <option value="SUPERVISOR">Supervisor</option>
+    </select>
+    <button id="startShift" class="primary">START SHIFT</button>
+  </div>
+
+  <div id="radioCard" class="card hidden">
+    <div id="radioStatus" class="online"><b>RADIO CONNECTED</b></div>
+    <div id="roomStatus" class="small"></div>
+    <br>
+    <button id="pttPrivate" class="ptt">TALK TO<br>DISPATCH</button>
+    <br><br>
+    <button id="pttGroup" class="ptt">TALK TO<br><span id="groupLabel">ALL WCHR</span></button>
+    <br><br>
+    <button id="endShift" class="danger">END SHIFT</button>
+  </div>
+</div>
+
+<iframe id="privateFrame" allow="microphone *; autoplay *; camera *"></iframe>
+<iframe id="groupFrame" allow="microphone *; autoplay *; camera *"></iframe>
+
+<script>
+const BASE_ROOM='DCAWCHR11F7901C';
+const $=id=>document.getElementById(id);
+let device=localStorage.getItem('dcaWchrDevice')||'';
+let employee='',role='';
+
+function key(name){return String(name||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,36)}
+function vdo(room,label){return `https://vdo.ninja/?room=${encodeURIComponent(room)}&miconly&autostart&mute&cleanoutput&nosettings&novideobutton&nofileshare&nohangupbutton&label=${encodeURIComponent(label)}`}
+function showState(){
+  $('deviceLine').textContent=device?device:'Device not enrolled';
+  $('enrollCard').classList.toggle('hidden',!!device);
+  $('signinCard').classList.toggle('hidden',!device || !!employee);
+  $('radioCard').classList.toggle('hidden',!employee);
+  $('shiftLine').textContent=employee?employee+' • '+(role==='SUPERVISOR'?'Supervisor':'WCHR Agent'):'No employee signed in';
+}
+$('saveDevice').onclick=()=>{
+  device=$('deviceSelect').value;localStorage.setItem('dcaWchrDevice',device);showState();
+};
+$('startShift').onclick=()=>{
+  employee=$('employeeName').value.trim();
+  role=$('employeeRole').value;
+  if(!employee)return alert('Enter employee name');
+  startRadio();showState();
+};
+$('endShift').onclick=()=>{
+  employee='';role='';
+  $('privateFrame').src='about:blank';$('groupFrame').src='about:blank';
+  $('employeeName').value='';
+  showState();
+};
+function startRadio(){
+  const privateRoom=BASE_ROOM+'PRIVATE'+key(employee);
+  const groupRoom=role==='SUPERVISOR'?BASE_ROOM+'SUPERVISORS':BASE_ROOM+'ALL';
+  $('privateFrame').src=vdo(privateRoom,device+'-'+key(employee)+'-PRIVATE');
+  $('groupFrame').src=vdo(groupRoom,device+'-'+key(employee)+'-GROUP');
+  $('groupLabel').textContent=role==='SUPERVISOR'?'SUPERVISORS':'ALL WCHR';
+  $('roomStatus').textContent='Private + '+(role==='SUPERVISOR'?'Supervisor channel':'All-WCHR channel');
+}
+function post(frame,payload){try{frame.contentWindow.postMessage(payload,'*')}catch(e){}}
+function bind(btn,frame,label){
+  const start=e=>{e.preventDefault();post(frame,{PPT:true});post(frame,{mic:true});btn.classList.add('tx');btn.innerHTML='TRANSMITTING…';};
+  const stop=e=>{e.preventDefault();post(frame,{PPT:false});post(frame,{mic:false});btn.classList.remove('tx');btn.innerHTML=label();};
+  btn.addEventListener('mousedown',start);btn.addEventListener('touchstart',start,{passive:false});
+  window.addEventListener('mouseup',stop);window.addEventListener('touchend',stop,{passive:false});
+}
+bind($('pttPrivate'),$('privateFrame'),()=> 'TALK TO<br>DISPATCH');
+bind($('pttGroup'),$('groupFrame'),()=> 'TALK TO<br><span id="groupLabel">'+(role==='SUPERVISOR'?'SUPERVISORS':'ALL WCHR')+'</span>');
+
+showState();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

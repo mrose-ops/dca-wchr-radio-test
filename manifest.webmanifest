@@ -1,0 +1,8 @@
+{
+  "name": "DCA WCHR Radio",
+  "short_name": "DCA WCHR",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#581c87"
+}
