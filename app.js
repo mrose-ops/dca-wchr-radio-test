@@ -72,14 +72,6 @@ function loadRadioRooms() {
   byId('dispatchTxFrame').src =
     vdoUrl(room('INBOX'), DEVICE_ID + '-' + personKey(employee) + '-TO-DISPATCH');
 
-  // Supervisors may also broadcast to ALL WCHR.
-  if (role === 'SUPERVISOR') {
-    byId('allTxFrame').src =
-      vdoUrl(room('ALL'), DEVICE_ID + '-' + personKey(employee) + '-TX-ALL');
-  } else {
-    byId('allTxFrame').src = 'about:blank';
-  }
-
   byId('roomStatus').textContent =
     role === 'SUPERVISOR'
       ? 'Listening: ALL WCHR + Private + Supervisor • Can talk to Dispatch or ALL WCHR'
@@ -114,8 +106,7 @@ function endShift() {
     'listenAllFrame',
     'listenPrivateFrame',
     'listenSupervisorFrame',
-    'dispatchTxFrame',
-    'allTxFrame'
+    'dispatchTxFrame'
   ].forEach(id => byId(id).src = 'about:blank');
 
   byId('employeeName').value = '';
@@ -160,7 +151,7 @@ function bindPTT(button, frame, normalHtml) {
 
 function showDiagnostics() {
   const data = [
-    'Version: v0.3.0 TEST',
+    'Version: v0.3.1 TEST',
     'Device: ' + DEVICE_ID,
     'Employee: ' + (employee || '(none)'),
     'Role: ' + (role || '(none)'),
@@ -168,7 +159,7 @@ function showDiagnostics() {
     'Listening Private: ' + (byId('listenPrivateFrame').src || '(blank)'),
     'Listening Supervisor: ' + (byId('listenSupervisorFrame').src || '(blank)'),
     'Talk to Dispatch: ' + (byId('dispatchTxFrame').src || '(blank)'),
-    'Supervisor Talk All: ' + (byId('allTxFrame').src || '(blank)'),
+    'Supervisor Talk All: uses Listening ALL frame (single connection)',
     'Secure context: ' + window.isSecureContext
   ].join('\n');
 
@@ -190,7 +181,7 @@ function init() {
   byId('showDiag').addEventListener('click', showDiagnostics);
 
   bindPTT(byId('pttDispatch'), byId('dispatchTxFrame'), 'TALK TO<br>DISPATCH');
-  bindPTT(byId('pttAll'), byId('allTxFrame'), 'TALK TO<br>ALL WCHR');
+  bindPTT(byId('pttAll'), byId('listenAllFrame'), 'TALK TO<br>ALL WCHR');
 
   nameInput.addEventListener('input', () =>
     setMessage('Name entered. Select role and press START SHIFT.', true)
