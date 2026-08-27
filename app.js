@@ -115,6 +115,18 @@ function loadRadio(){
   byId('radioStatus').innerHTML='<b>RADIO LOADED — tap ENABLE RADIO AUDIO</b>';
 }
 
+async function requestPhoneMicPermission(){
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({
+      audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}
+    });
+    s.getTracks().forEach(t=>t.stop());
+    byId('radioStatus').innerHTML='<b>RADIO READY — listening</b>';
+  }catch(e){
+    byId('radioStatus').innerHTML='<b>MICROPHONE BLOCKED — allow mic in browser</b>';
+  }
+}
+
 function startShift(){
   employee=String(byId('employeeName').value||'').trim();
   role=byId('employeeRole').value||'AGENT';
@@ -125,6 +137,7 @@ function startShift(){
   }
   loadRadio();
   showRadioScreen();
+  requestPhoneMicPermission();
 }
 
 function endShift(){
@@ -165,7 +178,7 @@ function bindPTT(button,frame,normalHtml){
 
 function showDiagnostics(){
   const lines=[
-    'Version: v0.5.0 TEST',
+    'Version: v0.6.0 TEST',
     'Employee: '+employee,
     'Role: '+role,
     'ALL WCHR room: '+byId('dispatchAllView').src,
