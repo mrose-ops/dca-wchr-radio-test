@@ -8,11 +8,21 @@ let employee = '';
 let role = '';
 
 function personKey(name) {
-  return String(name || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 36);
+  return String(name || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 36);
 }
 
-function vdoUrl(room, label) {
-  return 'https://vdo.ninja/?room=' + encodeURIComponent(room)
+function room(kind) {
+  if (kind === 'ALL') return BASE_ROOM + 'ALL';
+  if (kind === 'INBOX') return BASE_ROOM + 'DISPATCHINBOX';
+  if (kind === 'SUPERVISORS') return BASE_ROOM + 'SUPERVISORS';
+  return BASE_ROOM + 'PRIVATE' + personKey(employee);
+}
+
+function vdoUrl(roomName, label) {
+  return 'https://vdo.ninja/?room=' + encodeURIComponent(roomName)
     + '&miconly&autostart&mute&cleanoutput&nosettings&novideobutton&nofileshare&nohangupbutton&label='
     + encodeURIComponent(label);
 }
@@ -32,19 +42,51 @@ function showStartScreen() {
 function showRadioScreen() {
   byId('startCard').classList.add('hidden');
   byId('radioCard').classList.remove('hidden');
-  byId('shiftSummary').textContent = employee + ' • ' + (role === 'SUPERVISOR' ? 'Supervisor' : 'WCHR Agent');
+  byId('shiftSummary').textContent =
+    employee + ' • ' + (role === 'SUPERVISOR' ? 'Supervisor' : 'WCHR Agent');
+
+  // Agents only get TALK TO DISPATCH.
+  // Supervisors additionally get TALK TO ALL WCHR.
+  byId('supervisorControls').classList.toggle('hidden', role !== 'SUPERVISOR');
 }
 
-function startRadio() {
-  const privateRoom = BASE_ROOM + 'PRIVATE' + personKey(employee);
-  const groupRoom = role === 'SUPERVISOR' ? BASE_ROOM + 'SUPERVISORS' : BASE_ROOM + 'ALL';
+function loadRadioRooms() {
+  // Every signed-in employee LISTENS to ALL WCHR broadcasts.
+  byId('listenAllFrame').src =
+    vdoUrl(room('ALL'), DEVICE_ID + '-' + personKey(employee) + '-LISTEN-ALL');
 
-  byId('privateFrame').src = vdoUrl(privateRoom, DEVICE_ID + '-' + personKey(employee) + '-PRIVATE');
-  byId('groupFrame').src = vdoUrl(groupRoom, DEVICE_ID + '-' + personKey(employee) + '-GROUP');
+  // Every employee listens to their own private room so Dispatch can
+  // speak to that one person without others hearing.
+  byId('listenPrivateFrame').src =
+    vdoUrl(room('PRIVATE'), DEVICE_ID + '-' + personKey(employee) + '-PRIVATE');
 
-  byId('groupLabel').textContent = role === 'SUPERVISOR' ? 'SUPERVISORS' : 'ALL WCHR';
-  byId('roomStatus').textContent = 'Private Dispatch channel + ' + (role === 'SUPERVISOR' ? 'Supervisor channel' : 'All-WCHR channel');
-  byId('radioStatus').innerHTML = '<b>RADIO LOADED — allow microphone if prompted</b>';
+  // Supervisors also listen to the supervisor channel.
+  if (role === 'SUPERVISOR') {
+    byId('listenSupervisorFrame').src =
+      vdoUrl(room('SUPERVISORS'), DEVICE_ID + '-' + personKey(employee) + '-SUPERVISOR');
+  } else {
+    byId('listenSupervisorFrame').src = 'about:blank';
+  }
+
+  // Agent/Supervisor -> Dispatch always transmits into Dispatch Inbox.
+  byId('dispatchTxFrame').src =
+    vdoUrl(room('INBOX'), DEVICE_ID + '-' + personKey(employee) + '-TO-DISPATCH');
+
+  // Supervisors may also broadcast to ALL WCHR.
+  if (role === 'SUPERVISOR') {
+    byId('allTxFrame').src =
+      vdoUrl(room('ALL'), DEVICE_ID + '-' + personKey(employee) + '-TX-ALL');
+  } else {
+    byId('allTxFrame').src = 'about:blank';
+  }
+
+  byId('roomStatus').textContent =
+    role === 'SUPERVISOR'
+      ? 'Listening: ALL WCHR + Private + Supervisor • Can talk to Dispatch or ALL WCHR'
+      : 'Listening: ALL WCHR + Private • Can talk only to Dispatch';
+
+  byId('radioStatus').innerHTML =
+    '<b>RADIO LOADED — allow microphone if prompted</b>';
 }
 
 function startShift() {
@@ -60,20 +102,26 @@ function startShift() {
     return;
   }
 
-  setMessage('Shift started.', true);
-  startRadio();
+  loadRadioRooms();
   showRadioScreen();
 }
 
 function endShift() {
   employee = '';
   role = '';
-  byId('privateFrame').src = 'about:blank';
-  byId('groupFrame').src = 'about:blank';
+
+  [
+    'listenAllFrame',
+    'listenPrivateFrame',
+    'listenSupervisorFrame',
+    'dispatchTxFrame',
+    'allTxFrame'
+  ].forEach(id => byId(id).src = 'about:blank');
+
   byId('employeeName').value = '';
   byId('employeeRole').value = 'AGENT';
   showStartScreen();
-  setMessage('Page ready. Name field and role selector should be active.', true);
+  setMessage('Page ready. Name field and role selector are active.', true);
 }
 
 function post(frame, payload) {
@@ -102,7 +150,7 @@ function bindPTT(button, frame, normalHtml) {
     post(frame, {PPT:false});
     post(frame, {mic:false});
     button.classList.remove('tx');
-    button.innerHTML = typeof normalHtml === 'function' ? normalHtml() : normalHtml;
+    button.innerHTML = normalHtml;
   }
 
   button.addEventListener('pointerdown', start);
@@ -112,15 +160,18 @@ function bindPTT(button, frame, normalHtml) {
 
 function showDiagnostics() {
   const data = [
-    'Version: v0.2.0 TEST',
+    'Version: v0.3.0 TEST',
     'Device: ' + DEVICE_ID,
     'Employee: ' + (employee || '(none)'),
     'Role: ' + (role || '(none)'),
-    'Private frame: ' + (byId('privateFrame').src || '(blank)'),
-    'Group frame: ' + (byId('groupFrame').src || '(blank)'),
-    'Secure context: ' + window.isSecureContext,
-    'Pointer events: ' + ('PointerEvent' in window)
+    'Listening ALL: ' + (byId('listenAllFrame').src || '(blank)'),
+    'Listening Private: ' + (byId('listenPrivateFrame').src || '(blank)'),
+    'Listening Supervisor: ' + (byId('listenSupervisorFrame').src || '(blank)'),
+    'Talk to Dispatch: ' + (byId('dispatchTxFrame').src || '(blank)'),
+    'Supervisor Talk All: ' + (byId('allTxFrame').src || '(blank)'),
+    'Secure context: ' + window.isSecureContext
   ].join('\n');
+
   const box = byId('radioDiag');
   box.textContent = data;
   box.classList.toggle('hidden');
@@ -129,28 +180,32 @@ function showDiagnostics() {
 function init() {
   const nameInput = byId('employeeName');
   const roleSelect = byId('employeeRole');
-  const startButton = byId('startShift');
-
-  if (!nameInput || !roleSelect || !startButton) {
-    document.body.innerHTML = '<div style="padding:20px;color:white;background:#7f1d1d">Phone app failed to initialize.</div>';
-    return;
-  }
 
   nameInput.disabled = false;
   roleSelect.disabled = false;
-  startButton.disabled = false;
+  byId('startShift').disabled = false;
 
-  startButton.addEventListener('click', startShift);
+  byId('startShift').addEventListener('click', startShift);
   byId('endShift').addEventListener('click', endShift);
   byId('showDiag').addEventListener('click', showDiagnostics);
 
-  bindPTT(byId('pttPrivate'), byId('privateFrame'), 'TALK TO<br>DISPATCH');
-  bindPTT(byId('pttGroup'), byId('groupFrame'), () => 'TALK TO<br><span id="groupLabel">' + (role === 'SUPERVISOR' ? 'SUPERVISORS' : 'ALL WCHR') + '</span>');
+  bindPTT(byId('pttDispatch'), byId('dispatchTxFrame'), 'TALK TO<br>DISPATCH');
+  bindPTT(byId('pttAll'), byId('allTxFrame'), 'TALK TO<br>ALL WCHR');
 
-  nameInput.addEventListener('input', () => setMessage('Name entered. Select role and press START SHIFT.', true));
-  roleSelect.addEventListener('change', () => setMessage('Role selected: ' + roleSelect.options[roleSelect.selectedIndex].text, true));
+  nameInput.addEventListener('input', () =>
+    setMessage('Name entered. Select role and press START SHIFT.', true)
+  );
+  roleSelect.addEventListener('change', () =>
+    setMessage(
+      'Role selected: ' + roleSelect.options[roleSelect.selectedIndex].text,
+      true
+    )
+  );
 
-  setMessage('JavaScript loaded successfully. Name field and role selector are active.', true);
+  setMessage(
+    'JavaScript loaded successfully. Name field and role selector are active.',
+    true
+  );
   showStartScreen();
 }
 
