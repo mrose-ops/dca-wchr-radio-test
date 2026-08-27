@@ -30,6 +30,16 @@
     .ptt.tx{background:#b91c1c}
     .diag{font-size:13px;line-height:1.4;margin-top:10px;padding:10px;border-radius:9px;background:#111827;color:#cbd5e1;white-space:pre-wrap}
     iframe.radio-frame{position:fixed;width:2px;height:2px;left:-20px;top:-20px;border:0;opacity:.01;pointer-events:none}
+    .assignment-card{background:#3b0764;border:2px solid #a855f7}
+    .assignment-card h2{margin-bottom:8px}
+    .assignment-details{font-size:20px;font-weight:900;line-height:1.35;margin:10px 0}
+    .assignment-state{padding:10px;border-radius:9px;background:#111827;color:#86efac;font-weight:900;margin:10px 0}
+    .assignment-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .assignment-actions button{padding:14px 8px;border:0;border-radius:10px;font-size:15px;font-weight:900}
+    .assignment-accept{background:#22c55e;color:#052e16}
+    .assignment-at{background:#38bdf8;color:#082f49}
+    .assignment-start{background:#f59e0b;color:#451a03}
+    .assignment-complete{background:#16a34a;color:#fff}
   </style>
 </head>
 <body>
@@ -38,7 +48,7 @@
     <h1>🎙 DCA WCHR RADIO</h1>
     <div class="device">TEST</div>
     <div id="shiftSummary" class="muted">No employee signed in</div>
-    <div class="version">Phone App v0.6.0 TEST</div>
+    <div class="version">Phone App v0.7.0 ASSIGNMENT TEST</div>
   </section>
 
   <section id="startCard" class="card">
@@ -55,6 +65,18 @@
 
     <button id="startShift" type="button" class="primary">START SHIFT</button>
     <div id="formMessage" class="diag">Page ready. Name field and role selector should be active.</div>
+  </section>
+
+  <section id="assignmentCard" class="card assignment-card hidden">
+    <h2 id="assignmentTitle">📟 NEW ASSIGNMENT</h2>
+    <div id="assignmentDetails" class="assignment-details">Wheelchair assignment</div>
+    <div id="assignmentPhoneStatus" class="assignment-state">ANNOUNCED</div>
+    <div class="assignment-actions">
+      <button id="assignmentAccept" class="assignment-accept">ACCEPT</button>
+      <button id="assignmentAt" class="assignment-at">AT LOCATION</button>
+      <button id="assignmentStart" class="assignment-start">START SERVICE</button>
+      <button id="assignmentComplete" class="assignment-complete">COMPLETE</button>
+    </div>
   </section>
 
   <section id="radioCard" class="card hidden">
@@ -81,6 +103,6 @@
 <iframe id="dispatchTxFrame" class="radio-frame" allow="microphone *; autoplay *"></iframe>
 
 
-<script src="app.js?v=060"></script>
+<script src="app.js?v=070"></script>
 </body>
 </html>

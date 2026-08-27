@@ -6,6 +6,9 @@ const DEVICE_ID='TEST';
 const byId=id=>document.getElementById(id);
 let employee='';
 let role='';
+let activeAssignment=null;
+let lastAssignmentMessageId='';
+
 
 function personKey(name){
   return String(name||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,36);
@@ -127,6 +130,115 @@ async function requestPhoneMicPermission(){
   }
 }
 
+
+function speak(text){
+  try{
+    if(!('speechSynthesis' in window))return;
+    speechSynthesis.cancel();
+    const u=new SpeechSynthesisUtterance(String(text||''));
+    u.rate=0.95;
+    u.volume=1;
+    speechSynthesis.speak(u);
+  }catch(e){}
+  try{navigator.vibrate?.([250,120,250]);}catch(e){}
+}
+
+function setAssignmentCard(a){
+  activeAssignment=a||null;
+  const card=byId('assignmentCard');
+
+  if(!activeAssignment){
+    card.classList.add('hidden');
+    return;
+  }
+
+  card.classList.remove('hidden');
+  byId('assignmentTitle').textContent=
+    activeAssignment.kind==='GATE_CHANGE'?'🚨 GATE CHANGE':'📟 NEW ASSIGNMENT';
+
+  const details=[];
+  if(activeAssignment.flight)details.push(activeAssignment.flight);
+  if(activeAssignment.gate)details.push('Gate '+activeAssignment.gate.replace(/^Gate\s*/i,''));
+  if(activeAssignment.location && !activeAssignment.gate)details.push(activeAssignment.location);
+
+  byId('assignmentDetails').textContent=details.join(' • ')||'Wheelchair assignment';
+  byId('assignmentPhoneStatus').textContent=activeAssignment.status||'ANNOUNCED';
+
+  const atBtn=byId('assignmentAt');
+  atBtn.textContent=activeAssignment.gate?'AT GATE':'AT LOCATION';
+
+  const accept=byId('assignmentAccept');
+  accept.textContent=activeAssignment.kind==='GATE_CHANGE'?'ACKNOWLEDGE GATE CHANGE':'ACCEPT';
+}
+
+function sendAssignmentStatus(status){
+  if(!activeAssignment)return;
+
+  const payload={
+    source:'DCA_PHONE',
+    version:'0.7.0',
+    type:'ASSIGNMENT_STATUS',
+    assignmentId:activeAssignment.id,
+    employee,
+    role,
+    status,
+    sentAt:Date.now()
+  };
+
+  try{
+    byId('dispatchTxFrame').contentWindow.postMessage({
+      sendData:JSON.stringify(payload)
+    },'*');
+  }catch(e){}
+
+  activeAssignment.status=status;
+  setAssignmentCard(activeAssignment);
+
+  if(status==='COMPLETED'){
+    setTimeout(()=>setAssignmentCard(null),1500);
+  }
+}
+
+function handlePrivateData(payload){
+  if(!payload || payload.source!=='DCA_DISPATCH')return;
+  if(payload.type!=='ASSIGNMENT' && payload.type!=='GATE_CHANGE')return;
+
+  const a=payload.assignment;
+  if(!a || !a.id)return;
+
+  const msgId=a.id+'|'+(a.gate||'')+'|'+payload.type;
+  if(lastAssignmentMessageId===msgId)return;
+  lastAssignmentMessageId=msgId;
+
+  activeAssignment=a;
+  setAssignmentCard(a);
+
+  const text=a.voiceText||
+    (payload.type==='GATE_CHANGE'
+      ?`Gate change for ${a.flight||'your flight'}. Proceed to ${a.gate||'the new gate'}.`
+      :`New wheelchair assignment ${a.flight||''} ${a.location||a.gate||''}`);
+
+  speak(text);
+}
+
+function bindAssignmentData(){
+  if(window.__phoneAssignmentDataBound)return;
+  window.__phoneAssignmentDataBound=true;
+
+  window.addEventListener('message',e=>{
+    const privateFrame=byId('privateView');
+    if(!privateFrame || e.source!==privateFrame.contentWindow)return;
+    if(!e.data || !('dataReceived' in e.data))return;
+
+    let payload=e.data.dataReceived;
+    try{
+      if(typeof payload==='string')payload=JSON.parse(payload);
+    }catch(err){return;}
+
+    handlePrivateData(payload);
+  });
+}
+
 function startShift(){
   employee=String(byId('employeeName').value||'').trim();
   role=byId('employeeRole').value||'AGENT';
@@ -178,7 +290,7 @@ function bindPTT(button,frame,normalHtml){
 
 function showDiagnostics(){
   const lines=[
-    'Version: v0.6.0 TEST',
+    'Version: v0.7.0 ASSIGNMENT TEST',
     'Employee: '+employee,
     'Role: '+role,
     'ALL WCHR room: '+byId('dispatchAllView').src,
@@ -200,6 +312,18 @@ function init(){
   byId('endShift').addEventListener('click',endShift);
   byId('showDiag').addEventListener('click',showDiagnostics);
   byId('enableAudio').addEventListener('click',enableRadioAudio);
+
+  byId('assignmentAccept').addEventListener('click',()=>{
+    if(activeAssignment?.kind==='GATE_CHANGE')sendAssignmentStatus('GATE_CHANGE_ACK');
+    else sendAssignmentStatus('ACCEPTED');
+  });
+  byId('assignmentAt').addEventListener('click',()=>{
+    sendAssignmentStatus(activeAssignment?.gate?'AT_GATE':'AT_LOCATION');
+  });
+  byId('assignmentStart').addEventListener('click',()=>sendAssignmentStatus('STARTED'));
+  byId('assignmentComplete').addEventListener('click',()=>sendAssignmentStatus('COMPLETED'));
+
+  bindAssignmentData();
 
   bindPTT(byId('pttDispatch'),byId('dispatchTxFrame'),'TALK TO<br>DISPATCH');
   bindPTT(byId('pttAll'),byId('dispatchAllView'),'TALK TO<br>ALL WCHR');
