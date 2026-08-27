@@ -13,13 +13,7 @@ function personKey(name){
 
 function roomUrl(room,label){
   return 'https://vdo.ninja/?room='+encodeURIComponent(room)
-    +'&miconly&autostart&cleanoutput&mutespeaker=0&nosettings&novideobutton&nofileshare&nohangupbutton&label='
-    +encodeURIComponent(label);
-}
-
-function viewUrl(stream,label){
-  return 'https://vdo.ninja/?view='+encodeURIComponent(stream)
-    +'&miconly&autostart&cleanoutput&mutespeaker=0&nosettings&novideobutton&nofileshare&label='
+    +'&miconly&autostart&cleanoutput&nosettings&novideobutton&nofileshare&nohangupbutton&label='
     +encodeURIComponent(label);
 }
 
@@ -92,29 +86,31 @@ function showRadioScreen(){
 }
 
 function loadRadio(){
-  configureView(byId('dispatchAllView'));
-  configureView(byId('privateView'));
+  configureRoom(byId('dispatchAllView'));
+  configureRoom(byId('privateView'));
   configureRoom(byId('supervisorFrame'));
   configureRoom(byId('dispatchTxFrame'));
 
-  // Direct Dispatch broadcast listeners
-  byId('dispatchAllView').src=viewUrl(allStream(),DEVICE_ID+'-'+personKey(employee)+'-VIEW-ALL');
-  byId('privateView').src=viewUrl(privateStream(),DEVICE_ID+'-'+personKey(employee)+'-VIEW-PRIVATE');
+  // EVERYONE (Agent + Supervisor) listens to ALL WCHR.
+  byId('dispatchAllView').src=roomUrl(BASE_ROOM+'ALL',DEVICE_ID+'-'+personKey(employee)+'-LISTEN-ALL');
 
-  // Supervisor group remains room-based
+  // Every signed-in employee listens to their own private room.
+  byId('privateView').src=roomUrl(BASE_ROOM+'PRIVATE'+personKey(employee),DEVICE_ID+'-'+personKey(employee)+'-PRIVATE');
+
+  // Supervisors additionally listen to the supervisor-only room.
   if(role==='SUPERVISOR'){
-    byId('supervisorFrame').src=roomUrl(supervisorRoom(),DEVICE_ID+'-'+personKey(employee)+'-SUPERVISOR');
+    byId('supervisorFrame').src=roomUrl(BASE_ROOM+'SUPERVISORS',DEVICE_ID+'-'+personKey(employee)+'-SUPERVISOR');
   }else{
     byId('supervisorFrame').src='about:blank';
   }
 
-  // Employee -> Dispatch Inbox
+  // EVERYONE talks back to Dispatch through the Dispatch Inbox room.
   byId('dispatchTxFrame').src=roomUrl(inboxRoom(),DEVICE_ID+'-'+personKey(employee)+'-TO-DISPATCH');
 
   byId('roomStatus').textContent=
     role==='SUPERVISOR'
-      ?'Listening: Dispatch ALL + Private + Supervisor • Can talk to Dispatch or ALL WCHR'
-      :'Listening: Dispatch ALL + Private • Can talk only to Dispatch';
+      ?'Listening: ALL WCHR + Private + Supervisor • Can talk to Dispatch or ALL WCHR'
+      :'Listening: ALL WCHR + Private • Can talk only to Dispatch';
 
   byId('radioStatus').innerHTML='<b>RADIO LOADED — tap ENABLE RADIO AUDIO</b>';
 }
@@ -169,10 +165,10 @@ function bindPTT(button,frame,normalHtml){
 
 function showDiagnostics(){
   const lines=[
-    'Version: v0.4.0 TEST',
+    'Version: v0.5.0 TEST',
     'Employee: '+employee,
     'Role: '+role,
-    'All view: '+byId('dispatchAllView').src,
+    'ALL WCHR room: '+byId('dispatchAllView').src,
     'Private view: '+byId('privateView').src,
     'Inbox TX: '+byId('dispatchTxFrame').src,
     'Secure context: '+window.isSecureContext
@@ -193,7 +189,7 @@ function init(){
   byId('enableAudio').addEventListener('click',enableRadioAudio);
 
   bindPTT(byId('pttDispatch'),byId('dispatchTxFrame'),'TALK TO<br>DISPATCH');
-  bindPTT(byId('pttAll'),byId('supervisorFrame'),'TALK TO<br>ALL WCHR');
+  bindPTT(byId('pttAll'),byId('dispatchAllView'),'TALK TO<br>ALL WCHR');
 
   setMessage('JavaScript loaded successfully.',true);
   showStartScreen();
