@@ -23,8 +23,54 @@ function room(kind) {
 
 function vdoUrl(roomName, label) {
   return 'https://vdo.ninja/?room=' + encodeURIComponent(roomName)
-    + '&miconly&autostart&mute&cleanoutput&nosettings&novideobutton&nofileshare&nohangupbutton&label='
+    + '&miconly&autostart&cleanoutput&mutespeaker=0&nosettings&novideobutton&nofileshare&nohangupbutton&label='
     + encodeURIComponent(label);
+}
+
+function configureRadioFrame(frame) {
+  if (!frame) return;
+  const apply = () => {
+    try {
+      frame.contentWindow.postMessage({speaker:true}, '*');
+      frame.contentWindow.postMessage({mute:false}, '*');
+      frame.contentWindow.postMessage({volume:1}, '*');
+      frame.contentWindow.postMessage({mic:false}, '*');
+    } catch (err) {}
+  };
+  frame.onload = () => {
+    apply();
+    setTimeout(apply, 500);
+    setTimeout(apply, 1500);
+  };
+}
+
+function enableRadioAudio() {
+  const frames = [
+    byId('listenAllFrame'),
+    byId('listenPrivateFrame'),
+    byId('listenSupervisorFrame'),
+    byId('dispatchTxFrame')
+  ];
+  frames.forEach(frame => {
+    try {
+      frame.contentWindow.postMessage({speaker:true}, '*');
+      frame.contentWindow.postMessage({mute:false}, '*');
+      frame.contentWindow.postMessage({volume:1}, '*');
+      frame.contentWindow.postMessage({mic:false}, '*');
+    } catch (err) {}
+  });
+
+  const status = byId('radioStatus');
+  status.innerHTML = '<b>RADIO AUDIO ENABLED — listening</b>';
+
+  // A tiny user-gesture-created audio context helps Android Chrome authorize playback.
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (Ctx) {
+      const ctx = new Ctx();
+      if (ctx.state === 'suspended') ctx.resume();
+    }
+  } catch (err) {}
 }
 
 function setMessage(text, good) {
@@ -51,6 +97,11 @@ function showRadioScreen() {
 }
 
 function loadRadioRooms() {
+  configureRadioFrame(byId('listenAllFrame'));
+  configureRadioFrame(byId('listenPrivateFrame'));
+  configureRadioFrame(byId('listenSupervisorFrame'));
+  configureRadioFrame(byId('dispatchTxFrame'));
+
   // Every signed-in employee LISTENS to ALL WCHR broadcasts.
   byId('listenAllFrame').src =
     vdoUrl(room('ALL'), DEVICE_ID + '-' + personKey(employee) + '-LISTEN-ALL');
@@ -96,6 +147,7 @@ function startShift() {
 
   loadRadioRooms();
   showRadioScreen();
+  setTimeout(enableRadioAudio, 1200);
 }
 
 function endShift() {
@@ -151,7 +203,7 @@ function bindPTT(button, frame, normalHtml) {
 
 function showDiagnostics() {
   const data = [
-    'Version: v0.3.1 TEST',
+    'Version: v0.3.2 TEST',
     'Device: ' + DEVICE_ID,
     'Employee: ' + (employee || '(none)'),
     'Role: ' + (role || '(none)'),
@@ -179,6 +231,7 @@ function init() {
   byId('startShift').addEventListener('click', startShift);
   byId('endShift').addEventListener('click', endShift);
   byId('showDiag').addEventListener('click', showDiagnostics);
+  byId('enableAudio').addEventListener('click', enableRadioAudio);
 
   bindPTT(byId('pttDispatch'), byId('dispatchTxFrame'), 'TALK TO<br>DISPATCH');
   bindPTT(byId('pttAll'), byId('listenAllFrame'), 'TALK TO<br>ALL WCHR');
