@@ -28,17 +28,18 @@
   <div class="head">
     <h1>🎙 DCA WCHR RADIO</h1>
     <div id="deviceLine">Device not enrolled</div>
-    <div id="shiftLine" class="small">No employee signed in</div>
+    <div id="shiftLine" class="small">No employee signed in</div><div class="small">Phone App v0.1.2 TEST</div>
   </div>
 
   <div id="enrollCard" class="card">
     <b>ONE-TIME DEVICE ENROLLMENT</b>
     <label>Phone Device ID</label>
     <select id="deviceSelect">
+      <option value="TEST">TEST</option>
       <option value="WCHR-01">WCHR-01</option><option value="WCHR-02">WCHR-02</option><option value="WCHR-03">WCHR-03</option><option value="WCHR-04">WCHR-04</option><option value="WCHR-05">WCHR-05</option><option value="WCHR-06">WCHR-06</option><option value="WCHR-07">WCHR-07</option><option value="WCHR-08">WCHR-08</option><option value="WCHR-09">WCHR-09</option><option value="WCHR-10">WCHR-10</option><option value="WCHR-11">WCHR-11</option><option value="WCHR-12">WCHR-12</option><option value="WCHR-13">WCHR-13</option><option value="WCHR-14">WCHR-14</option><option value="WCHR-15">WCHR-15</option><option value="WCHR-16">WCHR-16</option><option value="WCHR-17">WCHR-17</option><option value="WCHR-18">WCHR-18</option><option value="WCHR-19">WCHR-19</option><option value="WCHR-20">WCHR-20</option><option value="WCHR-21">WCHR-21</option><option value="WCHR-22">WCHR-22</option><option value="WCHR-23">WCHR-23</option><option value="WCHR-24">WCHR-24</option><option value="WCHR-25">WCHR-25</option>
     </select>
     <button id="saveDevice" class="primary">SAVE DEVICE</button>
-    <div class="small">The phone remembers this Device ID. The employee name is not permanently saved.</div>
+    <div class="small">The phone remembers this Device ID. The employee name is not permanently saved.</div><div id="saveMessage" class="small" style="margin-top:8px;color:#86efac"></div>
   </div>
 
   <div id="signinCard" class="card hidden">
@@ -71,7 +72,9 @@
 <script>
 const BASE_ROOM='DCAWCHR11F7901C';
 const $=id=>document.getElementById(id);
-let device=localStorage.getItem('dcaWchrDevice')||'';
+function safeGet(k){try{return localStorage.getItem(k)||''}catch(e){return ''}}
+function safeSet(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}}
+let device=safeGet('dcaWchrDevice')||'';
 let employee='',role='';
 
 function key(name){return String(name||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,36)}
@@ -83,9 +86,14 @@ function showState(){
   $('radioCard').classList.toggle('hidden',!employee);
   $('shiftLine').textContent=employee?employee+' • '+(role==='SUPERVISOR'?'Supervisor':'WCHR Agent'):'No employee signed in';
 }
-$('saveDevice').onclick=()=>{
-  device=$('deviceSelect').value;localStorage.setItem('dcaWchrDevice',device);showState();
-};
+$('saveDevice').addEventListener('click', function(e){
+  e.preventDefault();
+  device=$('deviceSelect').value || 'TEST';
+  const saved=safeSet('dcaWchrDevice',device);
+  $('saveMessage').textContent=saved ? ('✓ '+device+' SAVED') : ('✓ '+device+' SELECTED FOR THIS SESSION');
+  showState();
+  setTimeout(()=>{ $('employeeName')?.focus(); },150);
+});
 $('startShift').onclick=()=>{
   employee=$('employeeName').value.trim();
   role=$('employeeRole').value;
@@ -117,7 +125,10 @@ bind($('pttPrivate'),$('privateFrame'),()=> 'TALK TO<br>DISPATCH');
 bind($('pttGroup'),$('groupFrame'),()=> 'TALK TO<br><span id="groupLabel">'+(role==='SUPERVISOR'?'SUPERVISORS':'ALL WCHR')+'</span>');
 
 showState();
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
+}
+if('caches' in window){caches.keys().then(keys=>keys.forEach(k=>caches.delete(k))).catch(()=>{});}
 </script>
 </body>
 </html>
