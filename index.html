@@ -28,7 +28,7 @@
   <div class="head">
     <h1>🎙 DCA WCHR RADIO</h1>
     <div id="deviceLine">Device not enrolled</div>
-    <div id="shiftLine" class="small">No employee signed in</div><div class="small">Phone App v0.1.2 TEST</div>
+    <div id="shiftLine" class="small">No employee signed in</div><div class="small">Phone App v0.1.3 TEST</div>
   </div>
 
   <div id="enrollCard" class="card">
@@ -38,8 +38,8 @@
       <option value="TEST">TEST</option>
       <option value="WCHR-01">WCHR-01</option><option value="WCHR-02">WCHR-02</option><option value="WCHR-03">WCHR-03</option><option value="WCHR-04">WCHR-04</option><option value="WCHR-05">WCHR-05</option><option value="WCHR-06">WCHR-06</option><option value="WCHR-07">WCHR-07</option><option value="WCHR-08">WCHR-08</option><option value="WCHR-09">WCHR-09</option><option value="WCHR-10">WCHR-10</option><option value="WCHR-11">WCHR-11</option><option value="WCHR-12">WCHR-12</option><option value="WCHR-13">WCHR-13</option><option value="WCHR-14">WCHR-14</option><option value="WCHR-15">WCHR-15</option><option value="WCHR-16">WCHR-16</option><option value="WCHR-17">WCHR-17</option><option value="WCHR-18">WCHR-18</option><option value="WCHR-19">WCHR-19</option><option value="WCHR-20">WCHR-20</option><option value="WCHR-21">WCHR-21</option><option value="WCHR-22">WCHR-22</option><option value="WCHR-23">WCHR-23</option><option value="WCHR-24">WCHR-24</option><option value="WCHR-25">WCHR-25</option>
     </select>
-    <button id="saveDevice" class="primary">SAVE DEVICE</button>
-    <div class="small">The phone remembers this Device ID. The employee name is not permanently saved.</div><div id="saveMessage" class="small" style="margin-top:8px;color:#86efac"></div>
+    <button type="button" id="saveDevice" class="primary" onclick="saveDeviceNow()">SAVE DEVICE</button>
+    <div class="small">The phone remembers this Device ID. The employee name is not permanently saved.</div><div id="saveMessage" class="small" style="margin-top:8px;color:#86efac">Ready to save device.</div>
   </div>
 
   <div id="signinCard" class="card hidden">
@@ -51,7 +51,7 @@
       <option value="AGENT">WCHR Agent</option>
       <option value="SUPERVISOR">Supervisor</option>
     </select>
-    <button id="startShift" class="primary">START SHIFT</button>
+    <button type="button" id="startShift" class="primary">START SHIFT</button>
   </div>
 
   <div id="radioCard" class="card hidden">
@@ -62,7 +62,7 @@
     <br><br>
     <button id="pttGroup" class="ptt">TALK TO<br><span id="groupLabel">ALL WCHR</span></button>
     <br><br>
-    <button id="endShift" class="danger">END SHIFT</button>
+    <button type="button" id="endShift" class="danger">END SHIFT</button>
   </div>
 </div>
 
@@ -80,20 +80,58 @@ let employee='',role='';
 function key(name){return String(name||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,36)}
 function vdo(room,label){return `https://vdo.ninja/?room=${encodeURIComponent(room)}&miconly&autostart&mute&cleanoutput&nosettings&novideobutton&nofileshare&nohangupbutton&label=${encodeURIComponent(label)}`}
 function showState(){
-  $('deviceLine').textContent=device?device:'Device not enrolled';
-  $('enrollCard').classList.toggle('hidden',!!device);
-  $('signinCard').classList.toggle('hidden',!device || !!employee);
-  $('radioCard').classList.toggle('hidden',!employee);
-  $('shiftLine').textContent=employee?employee+' • '+(role==='SUPERVISOR'?'Supervisor':'WCHR Agent'):'No employee signed in';
+  var deviceLine=document.getElementById('deviceLine');
+  var enroll=document.getElementById('enrollCard');
+  var signin=document.getElementById('signinCard');
+  var radio=document.getElementById('radioCard');
+  var shift=document.getElementById('shiftLine');
+
+  if(deviceLine) deviceLine.textContent=device ? device : 'Device not enrolled';
+  if(enroll) enroll.style.display=device ? 'none' : 'block';
+  if(signin) signin.style.display=(device && !employee) ? 'block' : 'none';
+  if(radio) radio.style.display=employee ? 'block' : 'none';
+  if(shift) shift.textContent=employee ? employee+' • '+(role==='SUPERVISOR'?'Supervisor':'WCHR Agent') : 'No employee signed in';
 }
-$('saveDevice').addEventListener('click', function(e){
-  e.preventDefault();
-  device=$('deviceSelect').value || 'TEST';
-  const saved=safeSet('dcaWchrDevice',device);
-  $('saveMessage').textContent=saved ? ('✓ '+device+' SAVED') : ('✓ '+device+' SELECTED FOR THIS SESSION');
-  showState();
-  setTimeout(()=>{ $('employeeName')?.focus(); },150);
-});
+function saveDeviceNow(){
+  try{
+    var select=document.getElementById('deviceSelect');
+    var msg=document.getElementById('saveMessage');
+    device=(select && select.value) ? select.value : 'TEST';
+
+    var saved=false;
+    try{
+      localStorage.setItem('dcaWchrDevice',device);
+      saved=true;
+    }catch(storageError){
+      saved=false;
+    }
+
+    if(msg){
+      msg.textContent=(saved ? '✓ ' : '✓ ') + device + (saved ? ' SAVED' : ' SELECTED FOR THIS SESSION');
+      msg.style.color='#86efac';
+    }
+
+    var enroll=document.getElementById('enrollCard');
+    var signin=document.getElementById('signinCard');
+    var deviceLine=document.getElementById('deviceLine');
+    if(deviceLine) deviceLine.textContent=device;
+    if(enroll) enroll.style.display='none';
+    if(signin) signin.style.display='block';
+
+    setTimeout(function(){
+      var name=document.getElementById('employeeName');
+      if(name) name.focus();
+    },150);
+    return false;
+  }catch(err){
+    var msg=document.getElementById('saveMessage');
+    if(msg){
+      msg.textContent='SAVE ERROR: '+(err && err.message ? err.message : String(err));
+      msg.style.color='#fca5a5';
+    }
+    return false;
+  }
+}
 $('startShift').onclick=()=>{
   employee=$('employeeName').value.trim();
   role=$('employeeRole').value;
@@ -125,6 +163,8 @@ bind($('pttPrivate'),$('privateFrame'),()=> 'TALK TO<br>DISPATCH');
 bind($('pttGroup'),$('groupFrame'),()=> 'TALK TO<br><span id="groupLabel">'+(role==='SUPERVISOR'?'SUPERVISORS':'ALL WCHR')+'</span>');
 
 showState();
+var startupMsg=document.getElementById('saveMessage');
+if(startupMsg && !device) startupMsg.textContent='JavaScript active — tap SAVE DEVICE.';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
 }
