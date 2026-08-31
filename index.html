@@ -2,107 +2,297 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-  <meta name="theme-color" content="#581c87">
-  <title>DCA WCHR Radio</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#111827">
+  <title>DCA Operations Radio</title>
   <style>
+    :root{font-family:Arial,Helvetica,sans-serif;color:#eef2ff;background:#0b1220}
     *{box-sizing:border-box}
-    body{margin:0;background:#0f172a;color:#fff;font-family:Arial,sans-serif}
-    .app{max-width:520px;margin:0 auto;padding:16px}
-    .head{background:#5b168f;border-radius:18px;padding:18px;margin-bottom:16px}
-    .head h1{margin:0 0 10px;font-size:28px}
-    .device{font-size:22px}
-    .muted{opacity:.72}
-    .version{margin-top:4px;font-size:13px;opacity:.72}
-    .card{background:#1e293b;border-radius:16px;padding:18px;margin-bottom:16px}
-    .card h2{margin:0 0 14px;font-size:22px}
-    label{display:block;font-weight:800;font-size:18px;margin:12px 0 6px}
-    input,select{display:block;width:100%;font-size:18px;padding:14px;border:2px solid transparent;border-radius:12px;background:#fff;color:#111}
-    input:focus,select:focus{outline:none;border-color:#a855f7}
-    button{font-family:inherit}
-    .primary{display:block;width:100%;margin-top:18px;padding:16px;border:0;border-radius:12px;background:#22c55e;color:#052e16;font-size:20px;font-weight:900}
-    .secondary{display:block;width:100%;margin-top:10px;padding:13px;border:0;border-radius:12px;background:#334155;color:#fff;font-size:16px;font-weight:800}
-    .danger{display:block;width:100%;margin-top:14px;padding:13px;border:0;border-radius:12px;background:#7f1d1d;color:#fff;font-size:16px;font-weight:900}
+    body{margin:0;background:#0b1220;color:#eef2ff}
+    main{max-width:720px;margin:auto;padding:18px}
+    .card{background:#111827;border:1px solid #273449;border-radius:16px;padding:16px;margin:0 0 14px}
+    h1{font-size:24px;margin:0 0 8px}
+    h2{font-size:16px;margin:0 0 10px}
+    label{display:block;font-size:13px;color:#bac7dc;margin:10px 0 5px}
+    input,select,button{font:inherit}
+    input,select{width:100%;padding:13px;border-radius:10px;border:1px solid #40506a;background:#0e1727;color:#fff}
+    button{border:0;border-radius:12px;min-height:52px;padding:12px 16px;font-weight:700;cursor:pointer}
+    .primary{width:100%;background:#2563eb;color:#fff}
+    .ptt{width:100%;min-height:150px;font-size:28px;background:#dc2626;color:#fff;touch-action:none;user-select:none}
+    .ptt.tx{background:#16a34a}
+    .secondary{background:#334155;color:#fff}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .row>*{flex:1 1 180px}
+    .status{padding:12px;border-radius:10px;background:#172033;word-break:break-word}
+    .ok{border-left:5px solid #22c55e}.warn{border-left:5px solid #f59e0b}.bad{border-left:5px solid #ef4444}
+    .small{font-size:12px;color:#9fb0c9;line-height:1.5}
+    .list{display:grid;gap:8px}
+    .peer{display:flex;justify-content:space-between;gap:10px;padding:10px;background:#0e1727;border-radius:9px}
     .hidden{display:none!important}
-    .status{padding:12px;border-radius:10px;background:#111827;margin-bottom:12px}
-    .ok{color:#86efac}
-    .ptt{display:block;width:100%;height:126px;margin-top:12px;border:0;border-radius:18px;background:#7e22ce;color:#fff;font-size:22px;font-weight:900;touch-action:none;-webkit-user-select:none;user-select:none}
-    .ptt.tx{background:#b91c1c}
-    .diag{font-size:13px;line-height:1.4;margin-top:10px;padding:10px;border-radius:9px;background:#111827;color:#cbd5e1;white-space:pre-wrap}
-    iframe.radio-frame{position:fixed;width:2px;height:2px;left:-20px;top:-20px;border:0;opacity:.01;pointer-events:none}
-    .assignment-card{background:#3b0764;border:2px solid #a855f7}
-    .assignment-card h2{margin-bottom:8px}
-    .assignment-details{font-size:20px;font-weight:900;line-height:1.35;margin:10px 0}
-    .assignment-state{padding:10px;border-radius:9px;background:#111827;color:#86efac;font-weight:900;margin:10px 0}
-    .assignment-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-    .assignment-actions button{padding:14px 8px;border:0;border-radius:10px;font-size:15px;font-weight:900}
-    .assignment-accept{background:#22c55e;color:#052e16}
-    .assignment-at{background:#38bdf8;color:#082f49}
-    .assignment-start{background:#f59e0b;color:#451a03}
-    .assignment-complete{background:#16a34a;color:#fff}
   </style>
 </head>
 <body>
-<div class="app">
-  <section class="head">
-    <h1>🎙 DCA WCHR RADIO</h1>
-    <div class="device">TEST</div>
-    <div id="shiftSummary" class="muted">No employee signed in</div>
-    <div class="version">Phone App v0.7.0 ASSIGNMENT TEST</div>
-  </section>
+<main>
+  <div class="card">
+    <h1>DCA Operations Radio</h1>
+    <div class="small">Dispatcher → everyone. Agent → Dispatcher only. Supervisor → Dispatcher only.</div>
+  </div>
 
-  <section id="startCard" class="card">
-    <h2>START SHIFT</h2>
-
-    <label for="employeeName">Employee name</label>
-    <input id="employeeName" type="text" autocomplete="name" placeholder="Enter your name">
-
-    <label for="employeeRole">Role</label>
-    <select id="employeeRole">
-      <option value="AGENT">WCHR Agent</option>
-      <option value="SUPERVISOR">Supervisor</option>
-    </select>
-
-    <button id="startShift" type="button" class="primary">START SHIFT</button>
-    <div id="formMessage" class="diag">Page ready. Name field and role selector should be active.</div>
-  </section>
-
-  <section id="assignmentCard" class="card assignment-card hidden">
-    <h2 id="assignmentTitle">📟 NEW ASSIGNMENT</h2>
-    <div id="assignmentDetails" class="assignment-details">Wheelchair assignment</div>
-    <div id="assignmentPhoneStatus" class="assignment-state">ANNOUNCED</div>
-    <div class="assignment-actions">
-      <button id="assignmentAccept" class="assignment-accept">ACCEPT</button>
-      <button id="assignmentAt" class="assignment-at">AT LOCATION</button>
-      <button id="assignmentStart" class="assignment-start">START SERVICE</button>
-      <button id="assignmentComplete" class="assignment-complete">COMPLETE</button>
+  <div class="card" id="setupCard">
+    <h2>Radio Sign In</h2>
+    <label for="api">Google Apps Script /exec URL</label>
+    <input id="api" placeholder="https://script.google.com/macros/s/.../exec">
+    <div class="row">
+      <div>
+        <label for="role">Role</label>
+        <select id="role">
+          <option value="agent">Agent</option>
+          <option value="supervisor">Supervisor</option>
+          <option value="dispatcher">Dispatcher</option>
+        </select>
+      </div>
+      <div>
+        <label for="name">Name / Radio ID</label>
+        <input id="name" placeholder="Example: Agent 12">
+      </div>
     </div>
-  </section>
+    <label for="code">Station Access Code</label>
+    <input id="code" type="password" placeholder="Access code">
+    <button class="primary" id="start" type="button" style="margin-top:14px">START RADIO</button>
+  </div>
 
-  <section id="radioCard" class="card hidden">
-    <h2>RADIO</h2>
-    <div id="radioStatus" class="status ok"><b>RADIO CONNECTING…</b></div>
-    <div id="roomStatus" class="muted"></div>
-    <button id="enableAudio" type="button" class="secondary">🔊 ENABLE RADIO AUDIO</button>
-
-    <button id="pttDispatch" type="button" class="ptt">TALK TO<br>DISPATCH</button>
-
-    <div id="supervisorControls" class="hidden">
-      <button id="pttAll" type="button" class="ptt">TALK TO<br>ALL WCHR</button>
+  <div class="card hidden" id="radioCard">
+    <div id="status" class="status warn">Starting…</div>
+    <button id="audioUnlock" class="secondary" type="button" style="width:100%;margin-top:10px">🔊 ENABLE RADIO AUDIO</button>
+    <button id="ptt" class="ptt" type="button" style="margin-top:10px">HOLD TO TALK</button>
+    <div class="row" style="margin-top:10px">
+      <button id="mute" class="secondary" type="button">Speaker: ON</button>
+      <button id="stop" class="secondary" type="button">STOP RADIO</button>
     </div>
+  </div>
 
-    <button id="endShift" type="button" class="danger">END SHIFT</button>
-    <button id="showDiag" type="button" class="secondary">SHOW DIAGNOSTICS</button>
-    <div id="radioDiag" class="diag hidden"></div>
-  </section>
-</div>
+  <div class="card hidden" id="peopleCard">
+    <h2>Connected Radios</h2>
+    <div id="people" class="list"><div class="small">No radios yet.</div></div>
+  </div>
 
-<iframe id="dispatchAllView" class="radio-frame" allow="autoplay *"></iframe>
-<iframe id="privateView" class="radio-frame" allow="autoplay *"></iframe>
-<iframe id="supervisorFrame" class="radio-frame" allow="microphone *; autoplay *"></iframe>
-<iframe id="dispatchTxFrame" class="radio-frame" allow="microphone *; autoplay *"></iframe>
+  <div class="card" id="diagCard">
+    <div id="diag" class="small">Diagnostics: waiting to start.</div>
+  </div>
 
+  <div class="card">
+    <div class="small">
+      GitHub Pages hosts this screen only. Google Apps Script handles signaling. TURN handles audio relay when configured.
+      Keep the Apps Script URL and station access code private.
+    </div>
+  </div>
+</main>
 
-<script src="app.js?v=070"></script>
+<script>
+(()=>{
+  const $=id=>document.getElementById(id);
+  const state={
+    api:'', role:'', name:'', code:'', id:'', stream:null, pcs:new Map(),
+    pollTimer:null, presenceTimer:null, tx:false, speaker:true, lastSeq:0,
+    ice:{iceServers:[{urls:'stun:stun.l.google.com:19302'}],iceTransportPolicy:'all'},
+    peers:[], stopped:false, remoteAudioUnlocked:false, connectedCount:0
+  };
+
+  function uid(){return 'r_'+Math.random().toString(36).slice(2)+Date.now().toString(36)}
+  function status(t,kind='warn'){const e=$('status');e.textContent=t;e.className='status '+kind}
+  function diag(t){const e=$('diag');if(e)e.textContent='Diagnostics: '+t}
+  function jsonp(action,data={}){
+    return new Promise((resolve,reject)=>{
+      const cb='dcaCb_'+Math.random().toString(36).slice(2);
+      const s=document.createElement('script');
+      const timer=setTimeout(()=>{cleanup();reject(new Error('Signaling timeout'))},12000);
+      function cleanup(){clearTimeout(timer);delete window[cb];s.remove()}
+      window[cb]=(x)=>{cleanup(); if(x&&x.ok===false) reject(new Error(x.error||'Server error')); else resolve(x)};
+      const q=new URLSearchParams({action,callback:cb,...data});
+      s.src=state.api+(state.api.includes('?')?'&':'?')+q.toString();
+      s.onerror=()=>{cleanup();reject(new Error('Cannot reach signaling service'))};
+      document.body.appendChild(s);
+    });
+  }
+
+  async function start(){
+    state.api=$('api').value.trim();
+    state.role=$('role').value;
+    state.name=$('name').value.trim();
+    state.code=$('code').value;
+    if(!/^https:\/\/script\.google\.com\/(?:a\/macros\/[^/]+\/)?macros\/s\/.+\/exec(?:\?.*)?$/.test(state.api)
+       && !/^https:\/\/script\.google\.com\/a\/macros\/[^/]+\/s\/.+\/exec(?:\?.*)?$/.test(state.api)){
+      alert('Enter the deployed Google Apps Script /exec URL.'); return;
+    }
+    if(!state.name){alert('Enter a name or radio ID.');return}
+    if(!state.code){alert('Enter the station access code.');return}
+    $('start').disabled=true;$('start').textContent='CONNECTING…';
+    state.id=uid(); state.stopped=false;
+    diag('contacting signaling backend…');
+    try{
+      await jsonp('ping',{code:state.code});
+      diag('signaling OK • requesting ICE configuration…');
+      const cfg=await jsonp('turn',{code:state.code,clientId:state.id});
+      if(cfg && cfg.iceServers){
+        state.ice={iceServers:cfg.iceServers,iceTransportPolicy:cfg.forceRelay?'relay':'all'};
+      }
+      state.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
+      diag('microphone OK • registering radio…');
+      for(const tr of state.stream.getAudioTracks()) tr.enabled=false;
+      await jsonp('presence',{code:state.code,id:state.id,role:state.role,name:state.name});
+      $('setupCard').classList.add('hidden');$('radioCard').classList.remove('hidden');
+      $('peopleCard').classList.toggle('hidden',state.role!=='dispatcher');
+      status((cfg&&cfg.forceRelay?'TURN RELAY FORCED • ':'')+'RADIO ONLINE','ok');
+      diag('radio registered • waiting for Dispatcher WebRTC connection…');
+      schedule();
+    }catch(e){
+      alert(e.message||String(e)); $('start').disabled=false;$('start').textContent='START RADIO';
+    }
+  }
+
+  function schedule(){
+    clearInterval(state.pollTimer);clearInterval(state.presenceTimer);
+    state.pollTimer=setInterval(sync,900);
+    state.presenceTimer=setInterval(()=>jsonp('presence',{code:state.code,id:state.id,role:state.role,name:state.name}).catch(()=>{}),8000);
+    sync();
+  }
+
+  function allowedPeer(p){
+    if(p.id===state.id)return false;
+    if(state.role==='dispatcher') return p.role==='agent'||p.role==='supervisor';
+    return p.role==='dispatcher';
+  }
+
+  async function sync(){
+    if(state.stopped)return;
+    try{
+      const res=await jsonp('sync',{code:state.code,id:state.id,role:state.role,name:state.name,since:String(state.lastSeq||0)});
+      if(Array.isArray(res.peers)){state.peers=res.peers;renderPeers();await reconcile()}
+      if(Array.isArray(res.messages)){
+        for(const m of res.messages){
+          state.lastSeq=Math.max(state.lastSeq,Number(m.seq||0));
+          await handleSignal(m);
+        }
+      }
+    }catch(e){status('SIGNALING ISSUE • '+e.message,'warn')}
+  }
+
+  function renderPeers(){
+    if(state.role!=='dispatcher')return;
+    const arr=state.peers.filter(p=>p.id!==state.id);
+    $('people').innerHTML=arr.length?arr.map(p=>`<div class="peer"><span>${esc(p.name||p.id)}</span><span>${esc(p.role||'')}</span></div>`).join(''):'<div class="small">No radios yet.</div>';
+  }
+  function esc(x){return String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+  async function reconcile(){
+    for(const p of state.peers.filter(allowedPeer)){
+      if(!state.pcs.has(p.id) && state.id < p.id) await makeOffer(p);
+    }
+    for(const [id,pc] of state.pcs){
+      if(!state.peers.some(p=>p.id===id)){try{pc.close()}catch{}state.pcs.delete(id)}
+    }
+  }
+
+  function newPc(peer){
+    const pc=new RTCPeerConnection(state.ice);
+    state.pcs.set(peer.id,pc);
+    for(const track of state.stream.getTracks()) pc.addTrack(track,state.stream);
+    pc.onicecandidate=e=>{if(e.candidate) sendSignal(peer.id,'ice',e.candidate)};
+    pc.ontrack=e=>{
+      let a=document.getElementById('audio_'+peer.id);
+      if(!a){a=document.createElement('audio');a.id='audio_'+peer.id;a.autoplay=true;document.body.appendChild(a)}
+      a.srcObject=e.streams[0]; a.muted=!state.speaker;
+      a.play().then(()=>{
+        state.remoteAudioUnlocked=true;
+        diag('remote audio stream active');
+      }).catch(()=>{
+        diag('remote audio blocked by browser • tap ENABLE RADIO AUDIO');
+      });
+    };
+    pc.onconnectionstatechange=()=>{
+      if(['failed','closed'].includes(pc.connectionState)){try{pc.close()}catch{}state.pcs.delete(peer.id)}
+      if(pc.connectionState==='connected'){
+        state.connectedCount=[...state.pcs.values()].filter(x=>x.connectionState==='connected').length;
+        status('CONNECTED TO DISPATCH • '+state.name,'ok');
+        diag('WebRTC connected • '+state.connectedCount+' live connection(s)');
+      }
+    };
+    return pc;
+  }
+
+  async function makeOffer(peer){
+    const pc=newPc(peer);
+    const offer=await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    await sendSignal(peer.id,'offer',offer);
+  }
+
+  async function sendSignal(to,type,payload){
+    await jsonp('send',{code:state.code,from:state.id,to,type,payload:JSON.stringify(payload)});
+  }
+
+  async function handleSignal(m){
+    if(m.to!==state.id)return;
+    const peer=state.peers.find(p=>p.id===m.from)||{id:m.from,role:'unknown',name:m.from};
+    if(!allowedPeer(peer))return;
+    let pc=state.pcs.get(peer.id);
+    const payload=typeof m.payload==='string'?JSON.parse(m.payload):m.payload;
+    if(m.type==='offer'){
+      if(!pc)pc=newPc(peer);
+      await pc.setRemoteDescription(payload);
+      const ans=await pc.createAnswer();await pc.setLocalDescription(ans);
+      await sendSignal(peer.id,'answer',ans);
+    }else if(m.type==='answer'&&pc){
+      await pc.setRemoteDescription(payload);
+    }else if(m.type==='ice'&&pc){
+      try{await pc.addIceCandidate(payload)}catch{}
+    }
+  }
+
+  function setTx(on){
+    state.tx=on;
+    if(state.stream)for(const tr of state.stream.getAudioTracks())tr.enabled=on;
+    $('ptt').classList.toggle('tx',on);$('ptt').textContent=on?'TRANSMITTING…':'HOLD TO TALK';
+  }
+
+  function stop(){
+    state.stopped=true;clearInterval(state.pollTimer);clearInterval(state.presenceTimer);
+    setTx(false);
+    for(const pc of state.pcs.values())try{pc.close()}catch{}
+    state.pcs.clear();
+    if(state.stream)for(const t of state.stream.getTracks())t.stop();
+    location.reload();
+  }
+
+  $('start').addEventListener('click',start);
+  const ptt=$('ptt');
+  ['pointerdown','touchstart'].forEach(ev=>ptt.addEventListener(ev,e=>{e.preventDefault();setTx(true)},{passive:false}));
+  ['pointerup','pointercancel','pointerleave','touchend','touchcancel'].forEach(ev=>ptt.addEventListener(ev,e=>{e.preventDefault();setTx(false)},{passive:false}));
+  $('mute').addEventListener('click',()=>{
+    state.speaker=!state.speaker;
+    document.querySelectorAll('audio').forEach(a=>a.muted=!state.speaker);
+    $('mute').textContent='Speaker: '+(state.speaker?'ON':'OFF');
+  });
+
+  $('audioUnlock').addEventListener('click', async ()=>{
+    state.speaker=true;
+    $('mute').textContent='Speaker: ON';
+    let played=0;
+    const audios=[...document.querySelectorAll('audio')];
+    for(const a of audios){
+      try{a.muted=false;await a.play();played++}catch(_){}
+    }
+    state.remoteAudioUnlocked=true;
+    diag(played ? 'speaker/audio enabled • '+played+' remote stream(s)' : 'speaker enabled • waiting for Dispatcher audio stream');
+  });
+
+  $('stop').addEventListener('click',stop);
+
+  const qp=new URLSearchParams(location.search);
+  if(qp.get('role'))$('role').value=qp.get('role');
+  if(qp.get('name'))$('name').value=qp.get('name');
+  if(qp.get('api'))$('api').value=qp.get('api');
+})();
+</script>
 </body>
 </html>
