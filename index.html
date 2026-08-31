@@ -40,24 +40,52 @@
 
   <div class="card" id="setupCard">
     <h2>Radio Sign In</h2>
-    <label for="api">Google Apps Script /exec URL</label>
-    <input id="api" placeholder="https://script.google.com/macros/s/.../exec">
+    <input id="api" type="hidden" value="https://script.google.com/a/macros/eulen.com/s/AKfycbxrzFWhBoVGnNTOWuZcaYv93RlleHngE6HOimeIEja8TNTCZ7c65CtZS_1qGMWZkjBYNw/exec">
     <div class="row">
       <div>
         <label for="role">Role</label>
         <select id="role">
-          <option value="agent">Agent</option>
+          <option value="agent">WCHR Agent</option>
           <option value="supervisor">Supervisor</option>
-          <option value="dispatcher">Dispatcher</option>
         </select>
       </div>
       <div>
-        <label for="name">Name / Radio ID</label>
-        <input id="name" placeholder="Example: Agent 12">
+        <label for="name">Employee Name</label>
+        <input id="name" placeholder="Enter your full name">
+      </div>
+      <div>
+        <label for="device">Device</label>
+        <select id="device">
+          <option value="">Select WCHR device</option>
+          <option value="WCHR 01">WCHR 01</option>
+          <option value="WCHR 02">WCHR 02</option>
+          <option value="WCHR 03">WCHR 03</option>
+          <option value="WCHR 04">WCHR 04</option>
+          <option value="WCHR 05">WCHR 05</option>
+          <option value="WCHR 06">WCHR 06</option>
+          <option value="WCHR 07">WCHR 07</option>
+          <option value="WCHR 08">WCHR 08</option>
+          <option value="WCHR 09">WCHR 09</option>
+          <option value="WCHR 10">WCHR 10</option>
+          <option value="WCHR 11">WCHR 11</option>
+          <option value="WCHR 12">WCHR 12</option>
+          <option value="WCHR 13">WCHR 13</option>
+          <option value="WCHR 14">WCHR 14</option>
+          <option value="WCHR 15">WCHR 15</option>
+          <option value="WCHR 16">WCHR 16</option>
+          <option value="WCHR 17">WCHR 17</option>
+          <option value="WCHR 18">WCHR 18</option>
+          <option value="WCHR 19">WCHR 19</option>
+          <option value="WCHR 20">WCHR 20</option>
+          <option value="WCHR 21">WCHR 21</option>
+          <option value="WCHR 22">WCHR 22</option>
+          <option value="WCHR 23">WCHR 23</option>
+          <option value="WCHR 24">WCHR 24</option>
+          <option value="WCHR 25">WCHR 25</option>
+        </select>
       </div>
     </div>
-    <label for="code">Station Access Code</label>
-    <input id="code" type="password" placeholder="Access code">
+    <input id="code" type="hidden" value="DCA2026">
     <button class="primary" id="start" type="button" style="margin-top:14px">START RADIO</button>
   </div>
 
@@ -76,6 +104,11 @@
     <div id="people" class="list"><div class="small">No radios yet.</div></div>
   </div>
 
+  <div class="card">
+    <h2>Latest Assignment / Alert</h2>
+    <div id="radioAnnouncement" class="status">No assignments or flight alerts yet.</div>
+  </div>
+
   <div class="card" id="diagCard">
     <div id="diag" class="small">Diagnostics: waiting to start.</div>
   </div>
@@ -92,7 +125,7 @@
 (()=>{
   const $=id=>document.getElementById(id);
   const state={
-    api:'', role:'', name:'', code:'', id:'', stream:null, pcs:new Map(),
+    api:'', role:'', name:'', device:'', code:'', id:'', stream:null, pcs:new Map(),
     pollTimer:null, presenceTimer:null, tx:false, speaker:true, lastSeq:0,
     ice:{iceServers:[{urls:'stun:stun.l.google.com:19302'}],iceTransportPolicy:'all'},
     peers:[], stopped:false, remoteAudioUnlocked:false, connectedCount:0, syncing:false, signalQueues:new Map()
@@ -119,13 +152,15 @@
     state.api=$('api').value.trim();
     state.role=$('role').value;
     state.name=$('name').value.trim();
+    state.device=$('device').value.trim();
     state.code=$('code').value;
     if(!/^https:\/\/script\.google\.com\/(?:a\/macros\/[^/]+\/)?macros\/s\/.+\/exec(?:\?.*)?$/.test(state.api)
        && !/^https:\/\/script\.google\.com\/a\/macros\/[^/]+\/s\/.+\/exec(?:\?.*)?$/.test(state.api)){
       alert('Enter the deployed Google Apps Script /exec URL.'); return;
     }
-    if(!state.name){alert('Enter a name or radio ID.');return}
-    if(!state.code){alert('Enter the station access code.');return}
+    if(!state.name){alert('Enter your employee name.');return}
+    if(state.role==='agent' && !state.device){alert('Select this phone device (WCHR 01 to WCHR 25).');return}
+    if(!state.code){alert('Radio configuration is missing.');return}
     $('start').disabled=true;$('start').textContent='CONNECTING…';
     state.id=uid(); state.stopped=false;
     diag('contacting signaling backend…');
@@ -139,7 +174,7 @@
       state.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
       diag('microphone OK • registering radio…');
       for(const tr of state.stream.getAudioTracks()) tr.enabled=false;
-      await jsonp('presence',{code:state.code,id:state.id,role:state.role,name:state.name});
+      await jsonp('presence',{code:state.code,id:state.id,role:state.role,name:state.name,device:state.device});
       $('setupCard').classList.add('hidden');$('radioCard').classList.remove('hidden');
       $('peopleCard').classList.toggle('hidden',state.role!=='dispatcher');
       status((cfg&&cfg.forceRelay?'TURN RELAY FORCED • ':'')+'RADIO ONLINE','ok');
@@ -153,7 +188,7 @@
   function schedule(){
     clearInterval(state.pollTimer);clearInterval(state.presenceTimer);
     state.pollTimer=setInterval(sync,900);
-    state.presenceTimer=setInterval(()=>jsonp('presence',{code:state.code,id:state.id,role:state.role,name:state.name}).catch(()=>{}),8000);
+    state.presenceTimer=setInterval(()=>jsonp('presence',{code:state.code,id:state.id,role:state.role,name:state.name,device:state.device}).catch(()=>{}),8000);
     sync();
   }
 
@@ -167,7 +202,7 @@
     if(state.stopped || state.syncing)return;
     state.syncing=true;
     try{
-      const res=await jsonp('sync',{code:state.code,id:state.id,role:state.role,name:state.name,since:String(state.lastSeq||0)});
+      const res=await jsonp('sync',{code:state.code,id:state.id,role:state.role,name:state.name,device:state.device,since:String(state.lastSeq||0)});
       if(Array.isArray(res.peers)){state.peers=res.peers;renderPeers();await reconcile()}
       if(Array.isArray(res.messages)){
         for(const m of res.messages){
@@ -254,8 +289,38 @@
     return next;
   }
 
+  function speakRadioAnnouncement(text){
+    const msg=String(text||'').trim();
+    if(!msg)return;
+    const box=$('radioAnnouncement');
+    if(box)box.textContent=msg;
+    if('speechSynthesis' in window){
+      try{
+        speechSynthesis.cancel();
+        const u=new SpeechSynthesisUtterance(msg);
+        const voices=speechSynthesis.getVoices()||[];
+        const preferred=voices.find(v=>/female|zira|aria|samantha|jenny|ava|susan|hazel/i.test(v.name))
+          || voices.find(v=>/^en/i.test(v.lang))
+          || voices[0];
+        if(preferred)u.voice=preferred;
+        u.rate=.95;
+        u.pitch=1.03;
+        speechSynthesis.speak(u);
+      }catch(_){}
+    }
+  }
+
   async function handleSignal(m){
     if(m.to!==state.id)return;
+
+    if(m.type==='announce'){
+      let data=m.payload;
+      try{if(typeof data==='string')data=JSON.parse(data)}catch(_){}
+      const text=(data&&typeof data==='object')?(data.text||data.message||''):String(data||'');
+      speakRadioAnnouncement(text);
+      return;
+    }
+
     const peer=state.peers.find(p=>p.id===m.from)||{id:m.from,role:'unknown',name:m.from};
     if(!allowedPeer(peer))return;
 
@@ -349,7 +414,11 @@
   const qp=new URLSearchParams(location.search);
   if(qp.get('role'))$('role').value=qp.get('role');
   if(qp.get('name'))$('name').value=qp.get('name');
-  if(qp.get('api'))$('api').value=qp.get('api');
+  if(qp.get('device')){
+    const raw=qp.get('device').toUpperCase().replace(/[^0-9]/g,'');
+    const num=Math.max(1,Math.min(25,Number(raw)||0));
+    if(num)$('device').value='WCHR '+String(num).padStart(2,'0');
+  }
 })();
 </script>
 </body>
