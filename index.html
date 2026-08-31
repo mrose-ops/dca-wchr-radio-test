@@ -95,7 +95,7 @@
     api:'', role:'', name:'', code:'', id:'', stream:null, pcs:new Map(),
     pollTimer:null, presenceTimer:null, tx:false, speaker:true, lastSeq:0,
     ice:{iceServers:[{urls:'stun:stun.l.google.com:19302'}],iceTransportPolicy:'all'},
-    peers:[], stopped:false, remoteAudioUnlocked:false, connectedCount:0
+    peers:[], stopped:false, remoteAudioUnlocked:false, connectedCount:0, syncing:false, signalQueues:new Map()
   };
 
   function uid(){return 'r_'+Math.random().toString(36).slice(2)+Date.now().toString(36)}
@@ -164,17 +164,27 @@
   }
 
   async function sync(){
-    if(state.stopped)return;
+    if(state.stopped || state.syncing)return;
+    state.syncing=true;
     try{
       const res=await jsonp('sync',{code:state.code,id:state.id,role:state.role,name:state.name,since:String(state.lastSeq||0)});
       if(Array.isArray(res.peers)){state.peers=res.peers;renderPeers();await reconcile()}
       if(Array.isArray(res.messages)){
         for(const m of res.messages){
           state.lastSeq=Math.max(state.lastSeq,Number(m.seq||0));
-          await handleSignal(m);
+          try{
+            await queueSignal(m);
+          }catch(err){
+            diag('ignored signaling message • '+(err?.message||err));
+          }
         }
       }
-    }catch(e){status('SIGNALING ISSUE • '+e.message,'warn')}
+    }catch(e){
+      status('SIGNALING ISSUE • '+e.message,'warn');
+      diag('sync error • '+e.message);
+    }finally{
+      state.syncing=false;
+    }
   }
 
   function renderPeers(){
@@ -221,31 +231,79 @@
   }
 
   async function makeOffer(peer){
-    const pc=newPc(peer);
+    let pc=state.pcs.get(peer.id);
+    if(!pc)pc=newPc(peer);
+    if(pc.signalingState!=='stable')return;
     const offer=await pc.createOffer();
     await pc.setLocalDescription(offer);
-    await sendSignal(peer.id,'offer',offer);
+    await sendSignal(peer.id,'offer',pc.localDescription);
   }
 
   async function sendSignal(to,type,payload){
     await jsonp('send',{code:state.code,from:state.id,to,type,payload:JSON.stringify(payload)});
   }
 
+  function queueSignal(m){
+    const key=String(m.from||'unknown');
+    const prev=state.signalQueues.get(key)||Promise.resolve();
+    const next=prev.catch(()=>{}).then(()=>handleSignal(m));
+    state.signalQueues.set(key,next);
+    next.finally(()=>{
+      if(state.signalQueues.get(key)===next)state.signalQueues.delete(key);
+    });
+    return next;
+  }
+
   async function handleSignal(m){
     if(m.to!==state.id)return;
     const peer=state.peers.find(p=>p.id===m.from)||{id:m.from,role:'unknown',name:m.from};
     if(!allowedPeer(peer))return;
+
     let pc=state.pcs.get(peer.id);
-    const payload=typeof m.payload==='string'?JSON.parse(m.payload):m.payload;
+    let payload=m.payload;
+    try{if(typeof payload==='string')payload=JSON.parse(payload)}catch{return}
+
     if(m.type==='offer'){
-      if(!pc)pc=newPc(peer);
+      if(!pc || pc.connectionState==='closed'){
+        pc=newPc(peer);
+      }
+
+      // Offer collision / glare protection.
+      // If we already made an offer, roll it back before accepting the remote offer.
+      if(pc.signalingState==='have-local-offer'){
+        try{await pc.setLocalDescription({type:'rollback'});}catch(_){}
+      }
+
+      if(pc.signalingState!=='stable'){
+        diag('offer waiting • current state '+pc.signalingState);
+        return;
+      }
+
       await pc.setRemoteDescription(payload);
-      const ans=await pc.createAnswer();await pc.setLocalDescription(ans);
-      await sendSignal(peer.id,'answer',ans);
-    }else if(m.type==='answer'&&pc){
+      const ans=await pc.createAnswer();
+      await pc.setLocalDescription(ans);
+      await sendSignal(peer.id,'answer',pc.localDescription);
+      return;
+    }
+
+    if(m.type==='answer'&&pc){
+      // Duplicate/stale answers are normal with polling signaling.
+      // Only apply an answer while we actually have a local offer outstanding.
+      if(pc.signalingState!=='have-local-offer'){
+        diag('stale/duplicate answer ignored • '+pc.signalingState);
+        return;
+      }
       await pc.setRemoteDescription(payload);
-    }else if(m.type==='ice'&&pc){
-      try{await pc.addIceCandidate(payload)}catch{}
+      return;
+    }
+
+    if(m.type==='ice'&&pc){
+      try{
+        await pc.addIceCandidate(payload);
+      }catch(err){
+        // ICE can arrive before the related description; polling may replay it.
+        diag('ICE candidate deferred/ignored');
+      }
     }
   }
 
